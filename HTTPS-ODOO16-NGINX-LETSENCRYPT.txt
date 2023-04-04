@@ -1,0 +1,161 @@
+#INSTALAR ODOO16 EN UBUNTU 22.04LTS 
+######################################
+# Por: Marko A. Caballero Moreno
+# marko.antonio.1.16.92@gmail.com
+#Probado en una instancia AWS 
+#Ubuntu Server 22.04 LTS
+############################################
+
+#INSTALL ODOO 16
+
+#seguir pasos de aqui
+https://odooperu.org/?p=1449
+
+#INSTALAR NGINX
+sudo su 
+sudo apt-get update
+apt -y install nginx
+systemctl enable nginx
+sudo ufw app list
+sudo systemctl restart nginx
+systemctl status nginx
+
+#INSTALAR LETSENCRYPT certbot
+sudo add-apt-repository ppa:certbot/certbot
+sudo apt update
+sudo apt install python-certbot-nginx
+sudo ufw allow 'Nginx Full'
+sudo ufw delete allow 'Nginx HTTP'
+sudo ufw status
+
+#Reemplazar example.com y www.example.com por el nombre de tu dominio, 
+	sudo certbot --nginx -d example.com -d www.example.com
+#Se abrira un asistente, colocar datos personales, escojer al final opcion "1: No redirect"
+#Si todo esta bien aparece un mensaje de congratulations!
+
+#Para renovacion automatica mensual de certificados
+	sudo certbot renew --dry-run
+
+#Reemplazar example.com por cuestion de orden y buenas practicas, colocar el nombre de tu dominio:
+	sudo nano /etc/nginx/sites-available/example.com
+	
+#Pegar la siguiente configuracion siguiente el el editor lo que esta dentro de los guiones:
+
+
+
+#CONFIGURACION NGINX
+########OPCIONAL SOLO HTTP Y PROXY INVERSO###################################
+-----------------------------------------------------------
+server {
+    listen 80;
+    server_name orinstruments.pe;
+
+    location / {
+       proxy_pass http://127.0.0.1:8069;
+       proxy_set_header Upgrade $http_upgrade;
+       proxy_set_header Connection "upgrade";
+       proxy_http_version 1.1;
+       proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+
+
+    }
+}
+----------------------------------------------------------
+
+########################### FULL HTTPS + PROXY INVERSO########################################
+upstream odoo {
+    server 127.0.0.1:8069;
+}
+
+upstream odoochat {
+ server 127.0.0.1:8072;
+}
+
+map $http_upgrade $connection_upgrade {
+  default upgrade;
+  ''      close;
+}
+
+# http -> https
+server {
+  listen 80;
+  server_name teca.pe;
+  rewrite ^(.*) https://$host$1 permanent;
+}
+
+server {
+   listen      80 ;
+   listen 443 ssl; # managed by Certbot
+   server_name teca.pe;
+   proxy_read_timeout 720s;
+   proxy_connect_timeout 720s;
+   proxy_send_timeout 720s;
+
+
+  #SSL PARAMS
+   ssl_certificate /etc/letsencrypt/live/teca.pe/fullchain.pem; # man$
+   ssl_certificate_key /etc/letsencrypt/live/teca.pe/privkey.pem; # m$
+   include /etc/letsencrypt/options-ssl-nginx.conf; # managed by Certbot
+   ssl_dhparam /etc/letsencrypt/ssl-dhparams.pem; # managed by Certbot
+
+
+   ssl_session_cache shared:SSL:128m;
+    ssl_stapling on;
+    ssl_stapling_verify on;
+    resolver 8.8.8.8;
+
+
+
+   #LOGS
+   access_log  /var/log/nginx/odoo.com.access.log;
+   error_log   /var/log/nginx/odoo.com.error.log;
+
+   proxy_buffers 16 64k;
+   proxy_buffer_size 128k;
+
+
+   # Redirect websocket requests to odoo gevent port
+   location /websocket {
+     proxy_pass http://odoochat;
+     proxy_set_header Upgrade $http_upgrade;
+     proxy_set_header Connection $connection_upgrade;
+     proxy_set_header X-Forwarded-Host $host;
+     proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+     proxy_set_header X-Forwarded-Proto $scheme;
+     proxy_set_header X-Real-IP $remote_addr;
+   }
+
+
+   # Redirect requests to odoo backend server
+   location / {
+    # Add Headers for odoo proxy mode
+     proxy_set_header X-Forwarded-Host $host;
+     proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+     proxy_set_header X-Forwarded-Proto $scheme;
+     proxy_set_header X-Real-IP $remote_addr;
+     proxy_redirect off;
+     proxy_pass http://odoo;
+   }
+
+
+  # common gzip
+  gzip_types text/css text/scss text/plain text/xml application/xml application/json application/javascript;
+  gzip on;
+}
+
+
+----------------------------------------------------------------------------------------------------
+rm /etc/nginx/sites-available/default
+rm /etc/nginx/sites-enabled/default
+
+#Reemplazar "example.com" por el nombre de su dominio , crea un enlace simbolico del archivo configurado al directorio especificado:
+	ln -s /etc/nginx/sites-available/example.com /etc/nginx/sites-enabled/example.com
+
+#Comprobar sintaxis Nginx
+	sudo nginx -t
+#Recargar Nginx
+	sudo systemctl Restart nginx
+#Ingresar a https://[IP o Dominio]
+
+
+
