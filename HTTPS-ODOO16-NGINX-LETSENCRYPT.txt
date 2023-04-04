@@ -158,4 +158,8 @@ rm /etc/nginx/sites-enabled/default
 #Ingresar a https://[IP o Dominio]
 
 
+####Habilitar proxymo mode en ODOO
+cd /etc/odoo
+nano odoo.conf
 
+Editar la linea donde dice proxymo_mode cambiarlo por "True"
