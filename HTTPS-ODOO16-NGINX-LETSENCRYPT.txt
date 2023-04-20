@@ -37,7 +37,13 @@ sudo ufw status
 	sudo certbot renew --dry-run
 
 #Reemplazar example.com por cuestion de orden y buenas practicas, colocar el nombre de tu dominio:
-	sudo nano /etc/nginx/sites-available/example.com
+sudo nano /etc/nginx/sites-available/example.com
+	
+rm /etc/nginx/sites-available/default
+rm /etc/nginx/sites-enabled/default
+
+#Reemplazar "example.com" por el nombre de su dominio , crea un enlace simbolico del archivo configurado al directorio especificado:
+	ln -s /etc/nginx/sites-available/example.com /etc/nginx/sites-enabled/example.com
 	
 #Pegar la siguiente configuracion siguiente el el editor lo que esta dentro de los guiones:
 
@@ -110,8 +116,8 @@ server {
    access_log  /var/log/nginx/odoo.com.access.log;
    error_log   /var/log/nginx/odoo.com.error.log;
 
-   proxy_buffers 16 64k;
-   proxy_buffer_size 128k;
+   proxy_buffers 16 128k;
+   proxy_buffer_size 256k;
 
 
    # Redirect websocket requests to odoo gevent port
@@ -145,21 +151,18 @@ server {
 
 
 ----------------------------------------------------------------------------------------------------
-rm /etc/nginx/sites-available/default
-rm /etc/nginx/sites-enabled/default
 
-#Reemplazar "example.com" por el nombre de su dominio , crea un enlace simbolico del archivo configurado al directorio especificado:
-	ln -s /etc/nginx/sites-available/example.com /etc/nginx/sites-enabled/example.com
 
 #Comprobar sintaxis Nginx
 	sudo nginx -t
 #Recargar Nginx
-	sudo systemctl Restart nginx
+	sudo systemctl restart nginx
 #Ingresar a https://[IP o Dominio]
 
 
 ####Habilitar proxymo mode en ODOO
 cd /etc/odoo
 nano odoo.conf
+systemctl restart odoo
 
 Editar la linea donde dice proxymo_mode cambiarlo por "True"
